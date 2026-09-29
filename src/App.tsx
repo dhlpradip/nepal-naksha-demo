@@ -9,7 +9,7 @@ import {
   type ValidDistrict,
   type DistrictInfo,
   type NepalNakshaColors,
-} from "nepal-naksha";
+} from "nepal-naksha-react";
 
 // Mock branch offices data for branch mode
 interface BranchItem {
@@ -175,7 +175,7 @@ export default function App() {
   // Code snippet string generator
   const generatedCode = useMemo(() => {
     if (mode === "branches") {
-      return `import { NepalNaksha } from "nepal-naksha";
+      return `import { NepalNaksha } from "nepal-naksha-react";
 
 export default function StoreMap() {
   const branches = ${JSON.stringify(
@@ -196,7 +196,7 @@ export default function StoreMap() {
     }
 
     if (mode === "province") {
-      return `import { NepalNaksha } from "nepal-naksha";
+      return `import { NepalNaksha } from "nepal-naksha-react";
 
 export default function ProvinceView() {
   return (
@@ -210,7 +210,7 @@ export default function ProvinceView() {
     }
 
     if (mode === "choropleth") {
-      return `import { NepalNaksha } from "nepal-naksha";
+      return `import { NepalNaksha } from "nepal-naksha-react";
 
 const density: Record<string, string> = {
   Kathmandu: "#b91c1c",
@@ -230,7 +230,7 @@ export default function Heatmap() {
     }
 
     return `import { useState } from "react";
-import { NepalNaksha, type ValidDistrict } from "nepal-naksha";
+import { NepalNaksha, type ValidDistrict } from "nepal-naksha-react";
 
 export default function App() {
   const [district, setDistrict] = useState<ValidDistrict | null>("Kathmandu");
