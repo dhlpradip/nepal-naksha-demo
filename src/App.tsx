@@ -9,6 +9,7 @@ import {
   type ValidDistrict,
   type DistrictInfo,
   type NepalNakshaColors,
+  type NepalNakshaRoute,
 } from "nepal-naksha-react";
 
 // Mock branch offices data for branch mode
@@ -78,6 +79,12 @@ const POPULATION_LEVELS: Record<string, string> = {
   Manang: "#0284c7",
 };
 
+const DELIVERY_ROUTES: NepalNakshaRoute[] = [
+  { name: "Central Hub", source: "Kathmandu", destination: "Chitwan", color: "#f97316", width: 3 },
+  { name: "Eastern Run", source: "Kathmandu", destination: "Jhapa", color: "#facc15", width: 2.5 },
+  { name: "Western Run", source: "Kathmandu", destination: "Kailali", color: "#22d3ee", width: 2.5 },
+];
+
 const THEMES: Record<string, { name: string; colors: NepalNakshaColors }> = {
   crimson: {
     name: "Nepal Crimson",
@@ -130,7 +137,7 @@ const THEMES: Record<string, { name: string; colors: NepalNakshaColors }> = {
 };
 
 export default function App() {
-  const [mode, setMode] = useState<"picker" | "branches" | "choropleth" | "province">("picker");
+  const [mode, setMode] = useState<"picker" | "branches" | "choropleth" | "province" | "routes">("routes");
   const [selectedDistrict, setSelectedDistrict] = useState<ValidDistrict | null>("Kathmandu");
   const [selectedMeta, setSelectedMeta] = useState<DistrictInfo | null>(getDistrictInfo("Kathmandu"));
   const [language, setLanguage] = useState<"en" | "ne">("en");
@@ -139,8 +146,24 @@ export default function App() {
   const [activeTheme, setActiveTheme] = useState<string>("indigo");
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
+  const [deliveryRoutes, setDeliveryRoutes] = useState<NepalNakshaRoute[]>(DELIVERY_ROUTES);
+  const [routeSource, setRouteSource] = useState<ValidDistrict>("Kathmandu");
+  const [routeDestination, setRouteDestination] = useState<ValidDistrict>("Chitwan");
+  const [routeName, setRouteName] = useState("New delivery route");
+  const [routeColor, setRouteColor] = useState("#fb7185");
 
   const colors = THEMES[activeTheme].colors;
+  const routeDistricts = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          deliveryRoutes.flatMap((route) =>
+            [route.source, route.destination].filter((point): point is ValidDistrict => typeof point === "string")
+          )
+        )
+      ),
+    [deliveryRoutes]
+  );
 
   // Handle district selection
   const handleSelect = (district: ValidDistrict, meta: DistrictInfo) => {
@@ -229,6 +252,32 @@ export default function Heatmap() {
 }`;
     }
 
+    if (mode === "routes") {
+      return `import { NepalNaksha, type NepalNakshaRoute } from "nepal-naksha-react";
+
+const routes: NepalNakshaRoute[] = ${JSON.stringify(
+        deliveryRoutes.map(({ name, source, destination, color, width }) => ({
+          name,
+          source,
+          destination,
+          color,
+          width,
+        })),
+        null,
+        2
+      )};
+
+export default function DeliveryMap() {
+  return (
+    <NepalNaksha
+      routes={routes}
+      language="${language}"
+      showLabels={${labelMode === true ? "true" : labelMode ? `"${labelMode}"` : "false"}}
+    />
+  );
+}`;
+    }
+
     return `import { useState } from "react";
 import { NepalNaksha, type ValidDistrict } from "nepal-naksha-react";
 
@@ -244,7 +293,7 @@ export default function App() {
     />
   );
 }`;
-  }, [mode, language, labelMode, colors, selectedProvince]);
+  }, [mode, language, labelMode, colors, selectedProvince, deliveryRoutes]);
 
   const copyCode = () => {
     navigator.clipboard.writeText(generatedCode);
@@ -265,6 +314,24 @@ export default function App() {
         <p style={{ fontSize: "16px", color: "#94a3b8", maxWidth: "680px", margin: "0 auto" }}>
           Lightweight, customizable React component rendering sharp SVG maps of Nepal with English & Devanagari support, headquarters metadata, and alias matching.
         </p>
+        <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "16px" }}>
+          <a
+            href="https://github.com/dhlpradip/nepal-naksha"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "#cbd5e1", border: "1px solid #334155", borderRadius: "999px", padding: "6px 12px", fontSize: "12px", textDecoration: "none" }}
+          >
+            ◇ GitHub package
+          </a>
+          <a
+            href="https://www.npmjs.com/package/nepal-naksha-react"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "#cbd5e1", border: "1px solid #334155", borderRadius: "999px", padding: "6px 12px", fontSize: "12px", textDecoration: "none" }}
+          >
+            ◉ npm package
+          </a>
+        </div>
       </header>
 
       {/* Main Grid: Controls + Map + Inspector */}
@@ -277,6 +344,7 @@ export default function App() {
               { id: "branches", label: "🏢 Coverage / Branches" },
               { id: "choropleth", label: "📊 Heatmap / Choropleth" },
               { id: "province", label: "🏛️ Province Filter" },
+              { id: "routes", label: "🚚 Delivery Routes" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -474,6 +542,98 @@ export default function App() {
           )}
         </div>
 
+        {mode === "routes" && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "end",
+              gap: "12px",
+              background: "#111827",
+              border: "1px solid #1f2937",
+              borderRadius: "12px",
+              padding: "14px 16px",
+            }}
+          >
+            <label style={{ display: "flex", flexDirection: "column", gap: "5px", color: "#94a3b8", fontSize: "12px" }}>
+              From
+              <select
+                value={routeSource}
+                onChange={(event) => setRouteSource(event.target.value as ValidDistrict)}
+                style={{ minWidth: "150px", padding: "8px", borderRadius: "7px", background: "#1f2937", border: "1px solid #374151", color: "#fff" }}
+              >
+                {DISTRICTS.map((district) => <option key={district}>{district}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: "5px", color: "#94a3b8", fontSize: "12px" }}>
+              To
+              <select
+                value={routeDestination}
+                onChange={(event) => setRouteDestination(event.target.value as ValidDistrict)}
+                style={{ minWidth: "150px", padding: "8px", borderRadius: "7px", background: "#1f2937", border: "1px solid #374151", color: "#fff" }}
+              >
+                {DISTRICTS.map((district) => <option key={district}>{district}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: "5px", color: "#94a3b8", fontSize: "12px" }}>
+              Route name
+              <input
+                value={routeName}
+                onChange={(event) => setRouteName(event.target.value)}
+                placeholder="e.g. Western delivery"
+                style={{ width: "190px", padding: "8px", borderRadius: "7px", background: "#1f2937", border: "1px solid #374151", color: "#fff" }}
+              />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: "5px", color: "#94a3b8", fontSize: "12px" }}>
+              Color
+              <input
+                type="color"
+                value={routeColor}
+                onChange={(event) => setRouteColor(event.target.value)}
+                style={{ width: "48px", height: "35px", padding: "2px", borderRadius: "7px", background: "#1f2937", border: "1px solid #374151", cursor: "pointer" }}
+              />
+            </label>
+            <button
+              onClick={() => {
+                if (routeSource === routeDestination) return;
+                setDeliveryRoutes((routes) => [
+                  ...routes,
+                  {
+                    name: routeName.trim() || `${routeSource} to ${routeDestination}`,
+                    source: routeSource,
+                    destination: routeDestination,
+                    color: routeColor,
+                    width: 2.5,
+                  },
+                ]);
+              }}
+              disabled={routeSource === routeDestination}
+              style={{
+                padding: "9px 14px",
+                borderRadius: "7px",
+                background: routeSource === routeDestination ? "#374151" : "#ef4444",
+                color: "#fff",
+                fontWeight: 700,
+                opacity: routeSource === routeDestination ? 0.6 : 1,
+              }}
+            >
+              + Add route
+            </button>
+            <div style={{ flexBasis: "100%", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {deliveryRoutes.map((route, index) => (
+                <button
+                  key={`${route.name}-${index}`}
+                  onClick={() => setDeliveryRoutes((routes) => routes.filter((_, routeIndex) => routeIndex !== index))}
+                  title="Remove route"
+                  style={{ padding: "5px 9px", borderRadius: "999px", background: "#1f2937", border: `1px solid ${route.color ?? "#64748b"}`, color: "#e2e8f0", fontSize: "11px" }}
+                >
+                  <span style={{ color: route.color }}>●</span> {route.name}: {route.source} → {route.destination} ×
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Map Container + Inspector Panel */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
           {/* SVG Map Card */}
@@ -560,6 +720,17 @@ export default function App() {
               />
             )}
 
+            {mode === "routes" && (
+              <NepalNaksha
+                items={routeDistricts}
+                value={null}
+                language={language}
+                showLabels={labelMode}
+                colors={colors}
+                routes={deliveryRoutes}
+              />
+            )}
+
             {/* Map Legend Overlay */}
             {mode === "choropleth" && (
               <div
@@ -592,7 +763,23 @@ export default function App() {
 
           {/* Right Inspector Card */}
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {selectedMeta ? (
+            {mode === "routes" ? (
+              <div
+                style={{
+                  background: "#111827",
+                  border: "1px solid #1f2937",
+                  borderRadius: "16px",
+                  padding: "20px",
+                }}
+              >
+                <h2 style={{ fontSize: "20px", fontWeight: 800, color: "#ffffff", marginBottom: "8px" }}>
+                  Delivery routes
+                </h2>
+                <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: 1.5 }}>
+                  Route endpoints are highlighted on the map. Hover a route to reveal its name.
+                </p>
+              </div>
+            ) : selectedMeta ? (
               <div
                 style={{
                   background: "#111827",
